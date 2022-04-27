@@ -14,18 +14,23 @@ func Listener(ip string, port int64, msg chan string) {
 		conn, err := l.Accept()
 		if err != nil {
 		}
-		buf := make([]byte, 1024)
-		_, err = conn.Read(buf)
-		if err != nil {
-		}
-		msg <- string(buf)
-		conn.Write([]byte("Message received."))
-		conn.Close()
+		go func(net.Conn) {
+			buf := make([]byte, 1024)
+			_, err = conn.Read(buf)
+			if err != nil {
+			}
+			for len(msg) > 0 {
+				<-msg
+			}
+			msg <- fmt.Sprintf("%s", buf)
+			conn.Write([]byte("Message received."))
+			conn.Close()
+		}(conn)
 
 	}
 }
 
-func Send(ip, msg string, port int64) {
+func Send(ip string, port int64, msg string) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", ip, port))
 	if err != nil {
 		return

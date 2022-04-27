@@ -14,11 +14,21 @@ type Application struct {
 var (
 	procGetForegroundWindow = syscall.NewLazyDLL("user32.dll").NewProc("GetForegroundWindow")
 	procGetWindowTextW      = syscall.NewLazyDLL("user32.dll").NewProc("GetWindowTextW")
+	CA                      = make(chan Application, 500)
 )
 
-func AppLogger(ch chan string) {
+func AppLogger(ch chan string, _ch *chan bool) {
 	tmp := ""
+	var Continue = false
 	for {
+		select {
+		case Continue, _ = <-*_ch:
+		default:
+			Continue = true
+		}
+		if !Continue {
+			return
+		}
 		time.Sleep(50 * time.Millisecond)
 		g, _ := func() (hand syscall.Handle, err error) {
 			r0, _, e1 := syscall.Syscall(procGetForegroundWindow.Addr(), 0, 0, 0, 0)
